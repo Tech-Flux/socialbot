@@ -1,9 +1,20 @@
 import os
+import time
+import threading
 import telebot
 import sqlite3
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp 
 bot = telebot.TeleBot('5857831840:AAFmLrSTR3LspmMIUix__gqtIo31vFiBGdk')
+
+def clear_terminal():
+    while True:
+        os.system('cls' if os.name == 'nt' else 'clear')
+        time.sleep(20)
+
+thread = threading.Thread(target=clear_terminal)
+thread.daemon = True 
+thread.start()
 
 conn = sqlite3.connect('data.db', check_same_thread=False)
 cursor = conn.cursor()
@@ -48,6 +59,27 @@ def start(message):
     menu.add(InlineKeyboardButton('Upgrade Premium', callback_data='upgrade_premium'))
     menu.add(InlineKeyboardButton('Invite Friends', callback_data='invite'))
     bot.send_message(message.chat.id, 'Please choose an option:', reply_markup=menu)
+
+def clear_files(directory, file_extensions):
+    deleted_files = []
+    for filename in os.listdir(directory):
+        if filename.endswith(tuple(file_extensions)):
+            file_path = os.path.join(directory, filename)
+            os.remove(file_path) 
+            deleted_files.append(filename)
+    return deleted_files
+
+@bot.message_handler(commands=['cleartmp'])
+def clear_tmp(message):
+    directory = "./"
+    file_extensions = ('.mp3', '.mp4') 
+
+    deleted_files = clear_files(directory, file_extensions)
+
+    if deleted_files:
+        bot.send_message(message.chat.id, f"Deleted the following files: {', '.join(deleted_files)}")
+    else:
+        bot.send_message(message.chat.id, "No files to delete in the specified directory.")
 
 @bot.message_handler(commands=['del'])
 def delete_account(message):
@@ -116,7 +148,7 @@ def send_user_id(message):
 
 video_requests = {}
 
-@bot.message_handler(commands=['download'])
+@bot.message_handler(commands=['youtube'])
 def download_video(message):
     user_id = message.from_user.id
     username = message.from_user.first_name
@@ -129,7 +161,7 @@ def download_video(message):
         conn.commit()
         bot.send_message(message.chat.id, f'Welcome, {username}! You have been registered and received 1000 coins.')
 
-    bot.send_message(message.chat.id, 'Please send the YouTube URL of the video you want to download.')
+    bot.send_message(message.chat.id, 'Send the YouTube URL of the video you want to download.')
 
 @bot.message_handler(func=lambda message: True)
 def fetch_video_formats(message):
@@ -171,18 +203,18 @@ def fetch_video_formats(message):
             bot.send_message(message.chat.id, 'Choose a resolution to download:', reply_markup=markup)
 
     except yt_dlp.utils.DownloadError as e:
-        bot.send_message(message.chat.id, 'Error: Unable to process the video URL. Please try again with a different URL.')
+        bot.send_message(message.chat.id, 'Error: Please try again with a different URL.')
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("download:"))
 def handle_download(call):
-    print("Callback data received:", call.data)  # Debugging
+  #  print("Callback data received:", call.data)  # Debugging
     video_format_id = call.data.split(":")[1]
-    print("Selected format ID:", video_format_id)  # Debugging
+   # print("Selected format ID:", video_format_id)  # Debugging
 
     video_url = video_requests.get(call.from_user.id)
 
     if not video_url:
-        print("Video URL is missing for user:", call.from_user.id)  # Debugging
+      #  print("Video URL is missing for user:", call.from_user.id)  # Debugging
         bot.send_message(call.message.chat.id, "Video URL not found. Please try again.")
         return
 
