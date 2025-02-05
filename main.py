@@ -176,7 +176,7 @@ def fetch_video_formats(message):
     if not user:
         bot.send_message(message.chat.id, 'User not found in the database!')
         return
-
+#update currency here
     premium, coins = user
 
     if not premium and coins < 200:
